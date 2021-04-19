@@ -247,6 +247,9 @@ void setup() {
       display.setTextColor(BLACK);
       display.print(i);
       display.setCursor(cursor_pos[0],cursor_pos[1]);
+      
+      //MQTT Verbindung aufrechterhalten
+      mqttClient.loop();
     }
   }
 }
