@@ -8,8 +8,13 @@
 #include "Adafruit_CCS811.h"
 
 //Allgemeine Konfiguration
-#define DATA_DELAY 1000    // Pause zwischen Messpunkten in Millisekunden, Standard: 1 Messpunkt pro Sekunde
-#define RECONNECT_DELAY 15 // Pause zwischen Versuchen, sich erneut mit dem WLAN-Netzwerk oder dem MQTT-Server zu verbinden, falls die Verbindung unterbrochen wurde (führt zu einem Einfrieren des Displays, deswegen sollte dieser Wert nicht zu niedrig gesetzt werden. Mögliche Lösung: Nutzung beider Kerne des ESP32: https://randomnerdtutorials.com/esp32-dual-core-arduino-ide/)
+#define DATA_DELAY 5000    // Pause zwischen Messpunkten in Millisekunden, Standard: 5 Sekunden pro Messpunkt - Für den MHZ-19B Sensor ist dies der Minimalwert!
+#define RECONNECT_DELAY 15 // Pause zwischen Versuchen, sich erneut mit dem WLAN-Netzwerk oder dem MQTT-Server zu verbinden, falls die Verbindung unterbrochen wurde (führt zu einem Einfrieren des Displays und erhöhten Netzwerkverkehr, deswegen sollte dieser Wert nicht zu niedrig gesetzt werden. Mögliche Lösung: Nutzung beider Kerne des ESP32: https://randomnerdtutorials.com/esp32-dual-core-arduino-ide/)
+#define alarm1 1000        // Grenze für ersten Alarm (gelbe Schrift)
+#define alarm2 1500        // Grenze für ersten Alarm (orangene Schrift)     
+#define alarm3 2000        // Grenze für ersten Alarm (rote Schrift)
+#define RectMax 2500       // maximale CO2-Konzentration, die innerhalb des Balkens angezeigt wird
+#define warmup true        // MH-Z19B muss 3 min. aufwärmen, hier angegeben in Mikrosekunden (siehe Datasheet https://www.winsen-sensor.com/d/files/infrared-gas-sensor/mh-z19b-co2-ver1_0.pdf). Achtung: Nur für Entwicklungszwecke auf false stellen!!!
 #define LED 4              // GPIO-Pin der Status-LED
 
 // WLAN Anmeldedaten && Konfiguration
@@ -65,7 +70,6 @@ float ccs811_temp;             //Variable für Messausgabe
 int color = BLUE;              //zur Anzeige vom mhz19_co2 auf den Display. Farbe ändert sich je nach CO2-Gehalt
 int x;                         //zur Anzeige vom mhz19_co2 auf den Display. Die x-Position des Balkens ändert sich je nach CO2-Gehalt
 int16_t cursor_pos[1];         //für die Countdowns zu Beginn (z.B. aufwärmen des MHZ-19B Sensors). Die Cursor-Position (x und y Wert) wird hier gespeichert
-bool mqtt_state = false;       //Zum eigenständigen Ein-/Ausschalten der MQTT-Funktion und der Status-LED auf Basis des Verbindungsstatuses
 
 // Definition von Funktionen (diese werden nur in loop() benötigt, die Ersteinrichtung von WiFi und MQTT passiert in setup())    
 void wifiReconnect() {                              //damit das Messgerät selbstständig ohne neuzustarten sich mit den WLAN-Netzwerk verbinden kann
@@ -86,14 +90,9 @@ void mqttReconnect() {                              //damit das Messgerät selbs
 
       // Once connected, publish an announcement...
       mqttClient.publish(MQTT_TOPIC_STATE, "connected", true);
-
-      mqtt_state = true;
-      
     }else {
       Serial.print("fehlgeschlagen, rc=");
       Serial.print(mqttClient.state());
-
-      mqtt_state = false;
     }
 }
 void mqttPublish(char *topic, char *payload) {      //für das Senden von Informationen (z.B. Messdaten) zum MQTT-Server
@@ -207,7 +206,6 @@ void setup() {
       display.println("verbunden");
       // Once connected, publish an announcement...
       mqttClient.publish(MQTT_TOPIC_STATE, "connected", true);
-      mqtt_state = true;
       delay(10000);
       break;
     }
@@ -229,27 +227,27 @@ void setup() {
         display.println(" | " + String(j) + "s");
       }
     }else {
-      mqtt_state = false;
       delay(10000); 
     }
   }
-
-  // MH-Z19B Aufwärmen
-  display.clearScreen();
-  display.setCursor(0,0);
-  display.setTextColor(CYAN);
-  display.print("MH-Z19B waermt auf - ");
-  Serial.print("MH-Z19B waermt auf - ");
-  display.getCursor(cursor_pos[0],cursor_pos[1]);
-  for(int64_t i=(180000000-esp_timer_get_time())/1000000; i>=0; i--) { // MH-Z19B muss 3 min. aufwärmen, hier angegeben in Mikrosekunden (siehe Datasheet https://www.winsen-sensor.com/d/files/infrared-gas-sensor/mh-z19b-co2-ver1_0.pdf)
+  if(warmup==true) {
+    // MH-Z19B Aufwärmen
+    display.clearScreen();
+    display.setCursor(0,0);
     display.setTextColor(CYAN);
-    Serial.println(i);
-    display.print(i);
-    delay(1000);
-    display.setCursor(cursor_pos[0],cursor_pos[1]);
-    display.setTextColor(BLACK);
-    display.print(i);
-    display.setCursor(cursor_pos[0],cursor_pos[1]);
+    display.print("MH-Z19B waermt auf - ");
+    Serial.print("MH-Z19B waermt auf - ");
+    display.getCursor(cursor_pos[0],cursor_pos[1]);
+    for(int64_t i=(180000000-esp_timer_get_time())/1000000; i>=0; i--) {
+      display.setTextColor(CYAN);
+      Serial.println(i);
+      display.print(i);
+      delay(1000);
+      display.setCursor(cursor_pos[0],cursor_pos[1]);
+      display.setTextColor(BLACK);
+      display.print(i);
+      display.setCursor(cursor_pos[0],cursor_pos[1]);
+    }
   }
 }
 
@@ -272,7 +270,7 @@ void loop() {
         while(1);
       }
     }
-  
+
     //HDC1080 Daten abfragen
     hdc1080_temp = hdc1080.readTemperature();
     hdc1080_humidity = hdc1080.readHumidity();
@@ -282,7 +280,7 @@ void loop() {
     mhz19_temp = myMHZ19.getTemperature();                    
 
     //nur, wenn eine MQTT Verbindung besteht
-    if(mqtt_state == true) {
+    if(mqttClient.connected() == true) {
       
       //MQTT Verbindung aufrechterhalten
       mqttClient.loop();
@@ -303,15 +301,15 @@ void loop() {
     }
         
     // Display Ausgabe CO2
-    x = mhz19_co2 / 33.78;
+    x = mhz19_co2/(RectMax/76);
     color = GREEN;
-    if (mhz19_co2>1000) {
+    if (mhz19_co2>alarm1) {
       color = YELLOW;
     }
-    if (mhz19_co2>1500) {
+    if (mhz19_co2>alarm2) {
       color = ORANGE;
     }
-    if (mhz19_co2>2000) {
+    if (mhz19_co2>alarm3) {
       color = RED;
     }
     display.clearScreen();
@@ -321,9 +319,9 @@ void loop() {
     display.print(mhz19_co2);
     display.setTextScale(1);
     display.print("ppm");
-    display.drawRect(9, 39, 80, 12,WHITE);
-    display.fillRect(10, 40, x, 10, color); //Start, Position, Länge, Dicke
-    display.drawRect(x+10, 40, 2, 10,BLUE);
+    display.drawRect(9, 39, 80, 12,WHITE);  //Start_x, Start_y, Länge (nach rechts), Dicke (nach unten)
+    display.fillRect(10, 40, x, 10, color); //Start_x, Start_y, Länge (nach rechts), Dicke (nach unten); startet eins weiter unten und rechts als der Rand, damit dieser noch zu sehen ist. Da noch der blaue Strich mit der Dicke 2 dazukommt, ist der maximale Wert für x innerhalb des Balkens 80 (Länge Balken) - 2 (jeweils ein Pixel Rand links und rechts) - 2 (Breite des blauen Striches)
+    display.drawRect(x+10, 40, 2, 10,BLUE); //Start_x, Start_y, Länge (nach rechts), Dicke (nach unten); x+10, da x sich auf die Länge der Balkenfüllung bezieht, dieser jedoch bei 10 beginnt (10 ist also der Offset)
 
     // Display Ausgabe Temperatur und Luftfeuchtigkeit
     display.setTextColor(BLUE);
