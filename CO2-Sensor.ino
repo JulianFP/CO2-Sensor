@@ -1,11 +1,10 @@
 //Bibliotheken hinzufügen
-#include <PubSubClient.h>
-#include <WiFi.h>
-#include "ClosedCube_HDC1080.h"
-#include "MHZ19.h"
-#include <SPI.h>
+#include <PubSubClient.h> //Für die MQTT-Verbindung - https://github.com/knolleary/pubsubclient
+#include <WiFi.h> //WLAN-Bibliothek des ESP32
+#include "ClosedCube_HDC1080.h"  //Für HDC1080 Sensor - https://github.com/closedcube/ClosedCube_HDC1080_Arduino
+#include "MHZ19.h" //Für MH-Z19B Sensor - https://github.com/WifWaf/MH-Z19
 #include <SSD_13XX.h> //https://github.com/sumotoy/SSD_13XX
-#include "Adafruit_CCS811.h"
+#include "Adafruit_CCS811.h" //Für CCS811 Sensor - https://github.com/adafruit/Adafruit_CCS811
 
 //Allgemeine Konfiguration
 #define DATA_DELAY 5000    // Pause zwischen Messpunkten in Millisekunden, Standard: 5 Sekunden pro Messpunkt - Für den MHZ-19B Sensor ist dies der Minimalwert!
