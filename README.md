@@ -15,7 +15,7 @@ Eine ESP32 Nodemcu liest in gewissen Intervallen (Standard: 5 Sekunden) die Mess
 - [x] Automatischer Standalone-Betrieb ohne WLAN- oder MQTT-Verbindung inklusive Status-LED für MQTT-Verbindung
 - [x] Automatische Reconnects in bestimmten Intervalls im Standalone-Betreib
 - [x] SSD1331 Bootscreen
-- [ ] Gehäuse
+- [x] Gehäuse
 - [ ] Einstellungen zum Kalibrieren / MHZ-19B Temperatur Offset?
 
 ### Referenz
