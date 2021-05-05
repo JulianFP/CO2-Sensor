@@ -18,7 +18,7 @@
 
 // WLAN Anmeldedaten && Konfiguration
 const char* ssid = "WLAN-Name";
-const char* password = "WLAN-Passwort";
+const char* password = "WLAN-Password";
 const int timeout = 30; //in Sekunden
 
 // MQTT Server Konfiguration
@@ -297,9 +297,9 @@ void loop() {
       mqttPublish((char*)((String)MQTT_DEVICE_TOPIC + "ccs811_temp").c_str(), (char*)((String)ccs811_temp).c_str());
 
       //MQTT Status-LED
-      digitalWrite(LED,HIGH);
-    }else {
       digitalWrite(LED,LOW);
+    }else {
+      digitalWrite(LED,HIGH);
     }
         
     // Display Ausgabe CO2

@@ -3,7 +3,13 @@
 Dies ist ein CO2- und Luftqualitätssensor, den ich während der Qualifikationsphase in der Schule gebaut habe. Hintergrund ist u.a. die Covid-19 Pandemie, da wegen dieser in Schulen die Klassenräume gelüftet werden müssen. Eine hohe CO2-Konzentration in der Luft ist ein guter Hinweis für schlechte Lüftung, weswegen dieser Sensor Lüftungskonzepte überprüfen kann. Des Weiteren wollte ich meinen Chemielehrer daran hindern, eine überteuerte, proprietäre und funktionsarme Fertiglösung zu kaufen. Mein Sensor im speziellen wird in den Chemieräumen ihren Einsatz finden.
 
 ### Beschreibung
-Eine ESP32 Nodemcu liest in gewissen Intervallen (Standard: 5 Sekunden) die Messdaten verschiedenster Sensoren aus, zeigt diese auf einen Display an und schickt sie per MQTT zu einem Grafana Server. 
+Eine ESP32 Nodemcu liest in gewissen Intervallen (Standard: 5 Sekunden) die Messdaten verschiedenster Sensoren aus, zeigt diese auf einen Display an und schickt sie per MQTT zu einem Grafana Server.
+
+![Seite](https://github.com/JulianFP/CO2-Sensor/tree/main/Gallery/Side.jpg)
+
+![Vorderseite](https://github.com/JulianFP/CO2-Sensor/tree/main/Gallery/Front.jpg)
+
+![Rückseite](https://github.com/JulianFP/CO2-Sensor/tree/main/Gallery/Back.jpg)
 
 ### Key-Features / Todo-Liste
 - [x] Einbindung des MH-Z19B Sensors (CO2, Temperatur)
