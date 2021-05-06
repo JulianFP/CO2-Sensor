@@ -5,11 +5,11 @@ Dies ist ein CO2- und Luftqualitätssensor, den ich während der Qualifikationsp
 ### Beschreibung
 Eine ESP32 Nodemcu liest in gewissen Intervallen (Standard: 5 Sekunden) die Messdaten verschiedenster Sensoren aus, zeigt diese auf einen Display an und schickt sie per MQTT zu einem Grafana Server.
 
-![Side2](https://user-images.githubusercontent.com/70963316/117186820-8245fd00-addb-11eb-9457-1e40c6ee54df.jpg)
+![Side3](https://user-images.githubusercontent.com/70963316/117326839-56398300-ae92-11eb-8ba9-c78fc04254be.jpg)
 
-![Front2](https://user-images.githubusercontent.com/70963316/117186835-870ab100-addb-11eb-9f97-cb95af839f56.jpg)
+![Front3](https://user-images.githubusercontent.com/70963316/117326867-5c2f6400-ae92-11eb-9242-9dcd53b409c1.jpg)
 
-![Back2](https://user-images.githubusercontent.com/70963316/117186851-8bcf6500-addb-11eb-9461-be2147f74eda.jpg)
+![Back2](https://user-images.githubusercontent.com/70963316/117326895-62bddb80-ae92-11eb-9587-686052b05009.jpg)
 
 ### Key-Features / Todo-Liste
 - [x] Einbindung des MH-Z19B Sensors (CO2, Temperatur)
@@ -21,6 +21,7 @@ Eine ESP32 Nodemcu liest in gewissen Intervallen (Standard: 5 Sekunden) die Mess
 - [x] Automatischer Standalone-Betrieb ohne WLAN- oder MQTT-Verbindung inklusive Status-LED für MQTT-Verbindung
 - [x] Automatische Reconnects in bestimmten Intervalls im Standalone-Betreib
 - [x] SSD1331 Bootscreen
+- [x] Anzeigen der Messdaten mithilfe des seriellen Plotters der Arduino IDE
 - [x] Gehäuse
 - [ ] Einstellungen zum Kalibrieren / MHZ-19B Temperatur Offset?
 
