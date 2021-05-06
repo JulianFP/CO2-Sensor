@@ -1,34 +1,34 @@
-//Bibliotheken hinzufügen
-#include <PubSubClient.h> //Für die MQTT-Verbindung - https://github.com/knolleary/pubsubclient
-#include <WiFi.h> //WLAN-Bibliothek des ESP32
-#include "ClosedCube_HDC1080.h"  //Für HDC1080 Sensor - https://github.com/closedcube/ClosedCube_HDC1080_Arduino
-#include "MHZ19.h" //Für MH-Z19B Sensor - https://github.com/WifWaf/MH-Z19
-#include <SSD_13XX.h> //https://github.com/sumotoy/SSD_13XX
-#include "Adafruit_CCS811.h" //Für CCS811 Sensor - https://github.com/adafruit/Adafruit_CCS811
+// Bibliotheken hinzufügen
+#include <PubSubClient.h>       // Für die MQTT-Verbindung
+#include <WiFi.h>                // WLAN-Bibliothek des ESP32
+#include "ClosedCube_HDC1080.h"   // Für HDC1080 Sensor
+#include "MHZ19.h"                // Für MH-Z19B Sensor
+#include <SSD_13XX.h>            // Für den SSD1331 Display
+#include "Adafruit_CCS811.h"      // Für CCS811 Sensor
 
-//Allgemeine Konfiguration
-#define DATA_DELAY 5000    // Pause zwischen Messpunkten in Millisekunden, Standard: 5 Sekunden pro Messpunkt - Für den MHZ-19B Sensor ist dies der Minimalwert!
-#define RECONNECT_DELAY 15 // Pause zwischen Versuchen, sich erneut mit dem WLAN-Netzwerk oder dem MQTT-Server zu verbinden, falls die Verbindung unterbrochen wurde (führt zu einem Einfrieren des Displays und erhöhten Netzwerkverkehr, deswegen sollte dieser Wert nicht zu niedrig gesetzt werden. Mögliche Lösung: Nutzung beider Kerne des ESP32: https://randomnerdtutorials.com/esp32-dual-core-arduino-ide/)
+// Allgemeine Konfiguration
+#define DATA_DELAY 5000    // Pause zwischen Messpunkten in Millisekunden, Standard: 5 Sekunden pro Messpunkt - Für den MH-Z19B Sensor ist dies der Minimalwert!
+#define RECONNECT_DELAY 15 // Pause zwischen Versuchen, sich erneut mit dem WLAN-Netzwerk und/oder dem MQTT-Server zu verbinden, falls die Verbindung unterbrochen wurde (führt zu einem Einfrieren des Displays und erhöhten Netzwerkverkehr, deswegen sollte dieser Wert nicht zu niedrig gesetzt werden. Mögliche Lösung: Nutzung beider Kerne des ESP32: https://randomnerdtutorials.com/esp32-dual-core-arduino-ide/)
 #define alarm1 1000        // Grenze für ersten Alarm (gelbe Schrift)
-#define alarm2 1500        // Grenze für ersten Alarm (orangene Schrift)     
+#define alarm2 1500        // Grenze für ersten Alarm (orangene Schrift)
 #define alarm3 2000        // Grenze für ersten Alarm (rote Schrift)
 #define RectMax 2500       // maximale CO2-Konzentration, die innerhalb des Balkens angezeigt wird
 #define warmup true        // MH-Z19B muss 3 min. aufwärmen, hier angegeben in Mikrosekunden (siehe Datasheet https://www.winsen-sensor.com/d/files/infrared-gas-sensor/mh-z19b-co2-ver1_0.pdf). Achtung: Nur für Entwicklungszwecke auf false stellen!!!
 #define LED 4              // GPIO-Pin der Status-LED
 
-// WLAN Anmeldedaten && Konfiguration
+// WLAN-Anmeldedaten & -Konfiguration
 const char* ssid = "WLAN-Name";
-const char* password = "WLAN-Password";
+const char* password = "WLAN-Passwort";
 const int timeout = 30; //in Sekunden
 
 // MQTT Server Konfiguration
-#define MQTT_SERVER "192.168.1.50"              //z.B. lokale IP des Raspberrys
-#define MQTT_PORT 1883                          //Standard MQTT-Port: 1883
-#define MQTT_USER ""                            //Standard: leer
-#define MQTT_PASSWORD ""                        //Standard: leer
-#define MQTT_CLIENT_ID "co2Node"                //Standard: co2Node
-#define MQTT_DEVICE_TOPIC "iot/chemie/"         //Standard:iot/chemie
-#define MQTT_TOPIC_STATE "iot/chemie/status"    //Standard: iot/chemie/status
+#define MQTT_SERVER "192.168.1.50"              // z.B. lokale IP-Addresse des Raspberrys auf den der MQTT- und Grafanaserver läuft
+#define MQTT_PORT 1883                          // Standard MQTT-Port: 1883
+#define MQTT_USER ""                            // Standard: leer
+#define MQTT_PASSWORD ""                        // Standard: leer
+#define MQTT_CLIENT_ID "co2Node"                // Standard: co2Nod
+#define MQTT_DEVICE_TOPIC "iot/chemie/"         // Standard:iot/chemie
+#define MQTT_TOPIC_STATE "iot/chemie/status"    // Standard: iot/chemie/status
 
 // MQTT Client initialisieren
 WiFiClient co2Node;
@@ -49,26 +49,26 @@ HardwareSerial mySerial(1);                               // Init UART for MHZ19
 //define __sclk 18
 SSD_13XX display = SSD_13XX(__CS, __DC, __RST);
 
-//Initialisiere CCS811 Sensor
+// Initialisiere CCS811 Sensor
 Adafruit_CCS811 ccs;
 
-//Initialisiere HDC1080 Sensor
+// Initialisiere HDC1080 Sensor
 ClosedCube_HDC1080 hdc1080;
 
 // Benötigte Variablen
-int64_t now;                   //zur Ausführung der DELAYs, jetziger Zeitpunkt wird hier gespeichert
-int64_t lastMsgTime = 0;       //zur Ausführung des DATA_DELAYs, letzter Messzeitpunkt wird hier gespeichert
-int64_t lastReconnectTime = 0; //zur Ausführung des RECONNECT_DELAYs, letzter Messzeitpunkt wird hier gespeichert
-int mhz19_temp;                //Variable für Messausgabe
-int mhz19_co2;                 //Variable für Messausgabe
-float hdc1080_temp;            //Variable für Messausgabe
-float hdc1080_humidity;        //Variable für Messausgabe
-int ccs811_co2;                //Variable für Messausgabe
-int ccs811_tvoc;               //Variable für Messausgabe
-float ccs811_temp;             //Variable für Messausgabe
-int color = BLUE;              //zur Anzeige vom mhz19_co2 auf den Display. Farbe ändert sich je nach CO2-Gehalt
-int x;                         //zur Anzeige vom mhz19_co2 auf den Display. Die x-Position des Balkens ändert sich je nach CO2-Gehalt
-int16_t cursor_pos[1];         //für die Countdowns zu Beginn (z.B. aufwärmen des MHZ-19B Sensors). Die Cursor-Position (x und y Wert) wird hier gespeichert
+int64_t now;                   // zur Ausführung der DELAYs, jetziger Zeitpunkt wird hier gespeichert
+int64_t lastMsgTime = 0;       // zur Ausführung des DATA_DELAYs, letzter Messzeitpunkt wird hier gespeichert
+int64_t lastReconnectTime = 0; // zur Ausführung des RECONNECT_DELAYs, letzter Messzeitpunkt wird hier gespeichert
+int mhz19_temp;                // Variable für Messausgabe
+int mhz19_co2;                 // Variable für Messausgabe
+float hdc1080_temp;            // Variable für Messausgabe
+float hdc1080_humidity;        // Variable für Messausgabe
+int ccs811_co2;                // Variable für Messausgabe
+int ccs811_tvoc;               // Variable für Messausgabe
+float ccs811_temp;             // Variable für Messausgabe
+int color = BLUE;              // zur Anzeige vom mhz19_co2 auf den Display. Farbe ändert sich je nach CO2-Gehalt
+int x;                         // zur Anzeige vom mhz19_co2 auf den Display. Die x-Position des Balkens ändert sich je nach CO2-Gehalt
+int16_t cursor_pos[1];         // für die Countdowns zu Beginn (z.B. aufwärmen des MHZ-19B Sensors). Die Cursor-Position (x und y Wert) wird hier gespeichert
 
 // Definition von Funktionen (diese werden nur in loop() benötigt, die Ersteinrichtung von WiFi und MQTT passiert in setup())    
 void wifiReconnect() {                              //damit das Messgerät selbstständig ohne neuzustarten sich mit den WLAN-Netzwerk verbinden kann
@@ -93,14 +93,6 @@ void mqttReconnect() {                              //damit das Messgerät selbs
       Serial.print("fehlgeschlagen, rc=");
       Serial.print(mqttClient.state());
     }
-}
-void mqttPublish(char *topic, char *payload) {      //für das Senden von Informationen (z.B. Messdaten) zum MQTT-Server
-  Serial.print("Publishing to MQTT: topic:");
-  Serial.print(topic);
-  Serial.print(" payload: ");
-  Serial.println(payload);
-
-  mqttClient.publish(topic, payload, true);
 }
 
 void setup() {
@@ -287,20 +279,32 @@ void loop() {
       //MQTT Verbindung aufrechterhalten
       mqttClient.loop();
       
-      // MQTT Ausgabe
-      mqttPublish((char*)((String)MQTT_DEVICE_TOPIC + "mhz19_co2").c_str(), (char*)((String)mhz19_co2).c_str());
-      mqttPublish((char*)((String)MQTT_DEVICE_TOPIC + "mhz19_temp").c_str(), (char*)((String)mhz19_temp).c_str());
-      mqttPublish((char*)((String)MQTT_DEVICE_TOPIC + "hdc1080_temp").c_str(), (char*)((String)hdc1080_temp).c_str());
-      mqttPublish((char*)((String)MQTT_DEVICE_TOPIC + "hdc1080_humidity").c_str(), (char*)((String)hdc1080_humidity).c_str());
-      mqttPublish((char*)((String)MQTT_DEVICE_TOPIC + "ccs811_co2").c_str(), (char*)((String)ccs811_co2).c_str());
-      mqttPublish((char*)((String)MQTT_DEVICE_TOPIC + "ccs811_tvoc").c_str(), (char*)((String)ccs811_tvoc).c_str());
-      mqttPublish((char*)((String)MQTT_DEVICE_TOPIC + "ccs811_temp").c_str(), (char*)((String)ccs811_temp).c_str());
+      // Senden der Daten per MQTT
+      mqttClient.publish((char*)((String)MQTT_DEVICE_TOPIC + "mhz19_co2").c_str(), (char*)((String)mhz19_co2).c_str(), true);
+      mqttClient.publish((char*)((String)MQTT_DEVICE_TOPIC + "mhz19_temp").c_str(), (char*)((String)mhz19_temp).c_str(), true);
+      mqttClient.publish((char*)((String)MQTT_DEVICE_TOPIC + "hdc1080_temp").c_str(), (char*)((String)hdc1080_temp).c_str(), true);
+      mqttClient.publish((char*)((String)MQTT_DEVICE_TOPIC + "hdc1080_humidity").c_str(), (char*)((String)hdc1080_humidity).c_str(), true);
+      mqttClient.publish((char*)((String)MQTT_DEVICE_TOPIC + "ccs811_co2").c_str(), (char*)((String)ccs811_co2).c_str(), true);
+      mqttClient.publish((char*)((String)MQTT_DEVICE_TOPIC + "ccs811_tvoc").c_str(), (char*)((String)ccs811_tvoc).c_str(), true);
+      mqttClient.publish((char*)((String)MQTT_DEVICE_TOPIC + "ccs811_temp").c_str(), (char*)((String)ccs811_temp).c_str(), true);
+      Serial.println("Messdaten erfolgreich zu MQTT-Server gesendet");
 
       //MQTT Status-LED
       digitalWrite(LED,LOW);
     }else {
       digitalWrite(LED,HIGH);
     }
+
+    // Serielle Ausgabe der Messdaten für den seriellen Plotter
+    Serial.println("mhz19_co2,mhz19_temp,hdc1080_temp,hdc1080_humidity,ccs811_co2,ccs811_tvoc,ccs811_temp");
+    Serial.print(String(mhz19_co2) + ",");
+    Serial.print(String(mhz19_temp) + ",");;
+    Serial.print(String(hdc1080_temp) + ",");
+    Serial.print(String(hdc1080_humidity) + ",");
+    Serial.print(String(ccs811_co2) + ",");
+    Serial.print(String(ccs811_tvoc) + ",");
+    Serial.println(String(ccs811_temp));
+    Serial.println(" ");
         
     // Display Ausgabe CO2
     x = mhz19_co2/(RectMax/76);
