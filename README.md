@@ -5,11 +5,11 @@ Dies ist ein CO2- und Luftqualitätssensor, den ich während der Qualifikationsp
 ### Beschreibung
 Eine ESP32 Nodemcu liest in gewissen Intervallen (Standard: 5 Sekunden) die Messdaten verschiedenster Sensoren aus, zeigt diese auf einen Display an und schickt sie per MQTT zu einem Grafana Server.
 
-![Seite](https://github.com/JulianFP/CO2-Sensor/tree/main/Gallery/Side.jpg)
+![Side2](https://user-images.githubusercontent.com/70963316/117186820-8245fd00-addb-11eb-9457-1e40c6ee54df.jpg)
 
-![Vorderseite](https://github.com/JulianFP/CO2-Sensor/tree/main/Gallery/Front.jpg)
+![Front2](https://user-images.githubusercontent.com/70963316/117186835-870ab100-addb-11eb-9f97-cb95af839f56.jpg)
 
-![Rückseite](https://github.com/JulianFP/CO2-Sensor/tree/main/Gallery/Back.jpg)
+![Back2](https://user-images.githubusercontent.com/70963316/117186851-8bcf6500-addb-11eb-9461-be2147f74eda.jpg)
 
 ### Key-Features / Todo-Liste
 - [x] Einbindung des MH-Z19B Sensors (CO2, Temperatur)
