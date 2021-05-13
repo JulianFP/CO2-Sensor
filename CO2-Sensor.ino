@@ -1,3 +1,8 @@
+/**************************************************************************************
+Dies ist der Code des CO2-Sensors. Er wurde gechrieben von Julian Partanen im Rahmen eines Projektes für das Gymnasium St. Mauritz Münster 2021.
+Er ist veröffentlicht unter der AGPL-3.0 Lizenz.
+**************************************************************************************/
+
 // Bibliotheken hinzufügen
 #include <PubSubClient.h>       // Für die MQTT-Verbindung
 #include <WiFi.h>                // WLAN-Bibliothek des ESP32
@@ -6,6 +11,7 @@
 #include <SSD_13XX.h>            // Für den SSD1331 Display
 #include "Adafruit_CCS811.h"      // Für CCS811 Sensor
 
+/***!!!Beginn Konfigurationsbereich!!!***/
 // Allgemeine Konfiguration
 #define DATA_DELAY 5000    // Pause zwischen Messpunkten in Millisekunden, Standard: 5 Sekunden pro Messpunkt - Für den MH-Z19B Sensor ist dies der Minimalwert!
 #define RECONNECT_DELAY 15 // Pause zwischen Versuchen, sich erneut mit dem WLAN-Netzwerk und/oder dem MQTT-Server zu verbinden, falls die Verbindung unterbrochen wurde (führt zu einem Einfrieren des Displays und erhöhten Netzwerkverkehr, deswegen sollte dieser Wert nicht zu niedrig gesetzt werden. Mögliche Lösung: Nutzung beider Kerne des ESP32: https://randomnerdtutorials.com/esp32-dual-core-arduino-ide/)
@@ -15,6 +21,15 @@
 #define RectMax 2500       // maximale CO2-Konzentration, die innerhalb des Balkens angezeigt wird
 #define warmup true        // MH-Z19B muss 3 min. aufwärmen, hier angegeben in Mikrosekunden (siehe Datasheet https://www.winsen-sensor.com/d/files/infrared-gas-sensor/mh-z19b-co2-ver1_0.pdf). Achtung: Nur für Entwicklungszwecke auf false stellen!!!
 #define LED 4              // GPIO-Pin der Status-LED
+
+// Offsets - zur Kalibrierung der Sensoren kann ein Offset ermittelt werden, der hier eingetragen werden kann
+#define offset_mhz19b_co2 0
+#define offset_mhz19b_temp 0
+#define offset_hdc1080_temp 0
+#define offset_hdc1080_hum 0
+#define offset_ccs811_co2 0
+#define offset_ccs811_tvoc 0
+#define offset_ccs811_temp ccs.calculateTemperature()-(hdc1080.readTemperature()+offset_hdc1080_temp)    //nur notwendig, falls ccs_temperature auf true steht (siehe Konfiguration des CJMCU-8118 Sensors) | Temperatursensor des CCS811 standardmäßig nicht kalibriert, ohne diese Anpassung wären die Temperaturwerte völlig falsch. Der Offset wird also über den HDC1080 Sensor bestimmt
 
 // WLAN-Anmeldedaten & -Konfiguration
 const char* ssid = "WLAN-Name";
@@ -29,17 +44,16 @@ const int timeout = 30; //in Sekunden
 #define MQTT_CLIENT_ID "co2Node"                // Standard: co2Nod
 #define MQTT_DEVICE_TOPIC "iot/chemie/"         // Standard:iot/chemie
 #define MQTT_TOPIC_STATE "iot/chemie/status"    // Standard: iot/chemie/status
-
-// MQTT Client initialisieren
-WiFiClient co2Node;
-PubSubClient mqttClient(co2Node);
+WiFiClient co2Node;                           // MQTT Client initialisieren
+PubSubClient mqttClient(co2Node);             // MQTT Client initialisieren
 
 // Konfiguration des MH-Z19B Sensors
-#define RX_PIN 16                                         // An diesen Pin ist der TX-Pin des MH-Z19B Sensors angeschlossen
-#define TX_PIN 17                                          // An diesen Pin ist der RX-Pin des MH-Z19B Sensors angeschlossen
-#define BAUDRATE 9600                                      // Baudrate des MH-Z19B Sensor, nicht ändern
-MHZ19 myMHZ19;                                             // Constructor for MH-Z19 class
-HardwareSerial mySerial(1);                               // Init UART for MHZ19
+#define auto_calibration true                            // definiert, ob die automatische Kalibrierung des MH-Z19B aktiviert sein soll. Für die manuelle Kalibrierung muss einmalig ein anderer Code ausgeführt werden, siehe Beispielcode der MH-Z19B Bibliothek
+#define RX_PIN 16                                        // An diesen Pin ist der TX-Pin des MH-Z19B Sensors angeschlossen
+#define TX_PIN 17                                        // An diesen Pin ist der RX-Pin des MH-Z19B Sensors angeschlossen
+#define BAUDRATE 9600                                    // Baudrate des MH-Z19B Sensor, nicht ändern
+MHZ19 myMHZ19;                                           // Konstruktor für MH-Z19B Sensor
+HardwareSerial mySerial(1);                              // Initialisiere UART-Verbindung mit MH-Z19B Sensor
 
 // Konfiguration des SSD1331 Displays
 #define __CS    5                                          
@@ -49,11 +63,11 @@ HardwareSerial mySerial(1);                               // Init UART for MHZ19
 //define __sclk 18
 SSD_13XX display = SSD_13XX(__CS, __DC, __RST);
 
-// Initialisiere CCS811 Sensor
-Adafruit_CCS811 ccs;
-
-// Initialisiere HDC1080 Sensor
-ClosedCube_HDC1080 hdc1080;
+// Konfigurieren des CJMCU-8118 Sensor bzw. des CCS811 und des HDC1080 Sensors
+#define ccs_temperature false       // Regelt, ob die Temperaturwerte des CCS811-Sensors per MQTT ausgegeben werden sollen. Für den CJMCU-8118 Sensor sollte dies auf "false" gesetzt werden, da es sonst einen Fehler gibt. Falls der CSS811 Sensor dagegen alleine betrieben wird, kann dies optional auf "true" gesetzt werden
+Adafruit_CCS811 ccs;                // Initialisiere CCS811 Sensor
+ClosedCube_HDC1080 hdc1080;      // Initialisiere HDC1080 Sensor
+/***!!!Ende Konfigurationsbereich!!!***/
 
 // Benötigte Variablen
 int64_t now;                   // zur Ausführung der DELAYs, jetziger Zeitpunkt wird hier gespeichert
@@ -71,7 +85,7 @@ int x;                         // zur Anzeige vom mhz19_co2 auf den Display. Die
 int16_t cursor_pos[1];         // für die Countdowns zu Beginn (z.B. aufwärmen des MHZ-19B Sensors). Die Cursor-Position (x und y Wert) wird hier gespeichert
 
 // Definition von Funktionen (diese werden nur in loop() benötigt, die Ersteinrichtung von WiFi und MQTT passiert in setup())    
-void wifiReconnect() {                              //damit das Messgerät selbstständig ohne neuzustarten sich mit den WLAN-Netzwerk verbinden kann
+void wifiReconnect() {   //damit das Messgerät selbstständig ohne neuzustarten sich mit den WLAN-Netzwerk verbinden kann
   Serial.println("Verbinde mit " + String(ssid));
   WiFi.begin(ssid, password);
   if (WiFi.status() == WL_CONNECTED) {
@@ -80,14 +94,14 @@ void wifiReconnect() {                              //damit das Messgerät selbs
   } 
 }
 
-void mqttReconnect() {                              //damit das Messgerät selbstständig ohne neuzustarten sich mit den MQTT-Server verbinden kann
+void mqttReconnect() {   //damit das Messgerät selbstständig ohne neuzustarten sich mit den MQTT-Server verbinden kann
     Serial.print("Verbinde mit " + String(MQTT_DEVICE_TOPIC) + " per MQTT...");
 
-    // Attempt to connect
+    // Versuche zu verbinden
     if (mqttClient.connect(MQTT_CLIENT_ID, MQTT_USER, MQTT_PASSWORD, MQTT_TOPIC_STATE, 1, true, "disconnected", false)) {
       Serial.println("verbunden");
 
-      // Once connected, publish an announcement...
+      // Wenn Verbindungsversuch erfolgreich, wird dies per MQTT gesendet
       mqttClient.publish(MQTT_TOPIC_STATE, "connected", true);
     }else {
       Serial.print("fehlgeschlagen, rc=");
@@ -131,9 +145,10 @@ void setup() {
   //MH-Z19 UART Verbindung einrichten
   mySerial.begin(BAUDRATE, SERIAL_8N1, RX_PIN, TX_PIN); 
   myMHZ19.begin(mySerial);                                
-  myMHZ19.autoCalibration();    //MHZ-19B Automatische Kalibrierung ist aktiviert, siehe Examples der Library für manuelle Kalibrierung                        
+  myMHZ19.autoCalibration(auto_calibration);
 
-  //Überprüfen, ob der CCS811 Sensor angeschlossen ist und kommuniziert
+  //CJMCU-8118 (bzw. CCS811 und HDC1080) I2C Verbindung einrichten und überprüfen
+  hdc1080.begin(0x40);
   if(!ccs.begin()){
     Serial.println("CCS811 Sensor nicht angeschlossen!");
     display.setTextColor(RED);
@@ -141,14 +156,11 @@ void setup() {
     display.println("CCS811 Sensor nicht angeschlossen!");
     while(1);
   }
-
-  //CCS811 Temperatur Kalibrierung
   while(!ccs.available());
-  float temp = ccs.calculateTemperature();
-  ccs.setTempOffset(temp - 25.0);
-
-  //Überprüfen, ob der CCS811 Sensor angeschlossen ist und kommuniziert
-  hdc1080.begin(0x40);
+  if (ccs_temperature == true) {                   //CCS811 Temperatur Kalibrierung
+    float temp = ccs.calculateTemperature();
+    ccs.setTempOffset(offset_ccs811_temp);
+  }
 
   //WiFi Ersteinrichtung - mit Timeout von 30 Sekunden
   Serial.println("Verbinde mit " + String(ssid) + " - Timeout in: ");
@@ -254,24 +266,30 @@ void loop() {
 
     //CCS811 Daten abfragen
     if(ccs.available()){
-      ccs811_temp = ccs.calculateTemperature();
+      if (ccs_temperature == true) {
+        ccs811_temp = ccs.calculateTemperature();  //Offset wird bereits bei der Einrichtung mithilfe einer Funktion gesetzt
+      }
       if(!ccs.readData()){
-        ccs811_co2 = ccs.geteCO2();
-        ccs811_tvoc = ccs.getTVOC();
+        ccs811_co2 = ccs.geteCO2()+offset_ccs811_co2;
+        ccs811_tvoc = ccs.getTVOC()+offset_ccs811_tvoc;
       }
       else{
-        Serial.println("ERROR, could not read CCS811!");
+        Serial.println("Konnte keine Messwerte vom CCS811-Sensor lesen");
+        display.clearScreen();
+        display.setCursor(0,0);
+        display.setTextColor(RED);
+        display.print("Konnte keine Messwerte vom CCS811-Sensor lesen");
         while(1);
       }
     }
 
     //HDC1080 Daten abfragen
-    hdc1080_temp = hdc1080.readTemperature();
-    hdc1080_humidity = hdc1080.readHumidity();
+    hdc1080_temp = hdc1080.readTemperature()+offset_hdc1080_temp;
+    hdc1080_humidity = hdc1080.readHumidity()+offset_hdc1080_temp;
 
     //MH-Z19 Daten abfragen
-    mhz19_co2 = myMHZ19.getCO2();                             
-    mhz19_temp = myMHZ19.getTemperature();                    
+    mhz19_co2 = myMHZ19.getCO2()+offset_mhz19b_co2;
+    mhz19_temp = myMHZ19.getTemperature()+offset_mhz19b_temp;            
 
     //nur, wenn eine MQTT Verbindung besteht
     if(mqttClient.connected() == true) {
@@ -286,7 +304,9 @@ void loop() {
       mqttClient.publish((char*)((String)MQTT_DEVICE_TOPIC + "hdc1080_humidity").c_str(), (char*)((String)hdc1080_humidity).c_str(), true);
       mqttClient.publish((char*)((String)MQTT_DEVICE_TOPIC + "ccs811_co2").c_str(), (char*)((String)ccs811_co2).c_str(), true);
       mqttClient.publish((char*)((String)MQTT_DEVICE_TOPIC + "ccs811_tvoc").c_str(), (char*)((String)ccs811_tvoc).c_str(), true);
-      mqttClient.publish((char*)((String)MQTT_DEVICE_TOPIC + "ccs811_temp").c_str(), (char*)((String)ccs811_temp).c_str(), true);
+      if (ccs_temperature == true) {
+        mqttClient.publish((char*)((String)MQTT_DEVICE_TOPIC + "ccs811_temp").c_str(), (char*)((String)ccs811_temp).c_str(), true);
+      }
       Serial.println("Messdaten erfolgreich zu MQTT-Server gesendet");
 
       //MQTT Status-LED

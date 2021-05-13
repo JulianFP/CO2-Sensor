@@ -23,7 +23,7 @@ Eine ESP32 Nodemcu liest in gewissen Intervallen (Standard: 5 Sekunden) die Mess
 - [x] SSD1331 Bootscreen
 - [x] Anzeigen der Messdaten mithilfe des seriellen Plotters der Arduino IDE
 - [x] Gehäuse
-- [ ] Einstellungen zum Kalibrieren / MHZ-19B Temperatur Offset?
+- [x] Möglichkeit zum Kalibrieren/Einstellen von Offsets
 
 ### Referenz
 Einige ähnliche Projekte haben mir sehr geholfen und mich inspiriert. Von Voltlog habe ich Code (hauptsächlich für die MQTT-Verbindung) und von Sasul habe ich das Gehäuse übernommen.
