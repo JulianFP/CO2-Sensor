@@ -1,7 +1,8 @@
-# table of content
+# table of content | Inhaltsverzeichnis
 
 <!-- TOC depthFrom:1 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
 
+- [table of content | Inhaltsverzeichnis](#table-of-content-inhaltsverzeichnis)
 - [Deutsch](#deutsch)
 	- [Kurzbeschreibung](#kurzbeschreibung)
 	- [Aufbau und Funktionsweise](#aufbau-und-funktionsweise)
@@ -11,6 +12,7 @@
 		- [Konfiguration des Grafana-&InfluxDB-&MQTT-Servers](#konfiguration-des-grafana-influxdb-mqtt-servers)
 	- [Referenz](#referenz)
 	- [Verwendete Bibliotheken](#verwendete-bibliotheken)
+- [English](#english)
 
 <!-- /TOC -->
 
@@ -111,3 +113,6 @@ Eine Liste aller verwendeten externen Bibliotheken mit zugehörigen Links. Eine 
 - SSD_13XX: Für SSD1331 Display - https://github.com/sumotoy/SSD_13XX
 - Adafruit_CCS811: Für CCS811 Sensor - https://github.com/adafruit/Adafruit_CCS811
 - Die Standard WLAN-Bibliothek des ESP32
+
+# English
+TBD
