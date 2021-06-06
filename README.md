@@ -51,19 +51,19 @@ Nun kann die Sensorstation per USB mit den PC verbunden und das Programm geflash
 Dieser Server kann grundsätzlich auf jeden PC installiert werden, auf den Linux läuft. Diese Anleitung ist allerdings für einen Linux-PC ausgelegt, der auf Basis von Ubuntu läuft (was meistens der Fall ist). Besonders empfehlenswert für diese Anwendung ist ein Raspberry Pi, den es schon sehr günstig zu haben gibt und der problemlos 24/7 laufen kann (diese Anleitung funktioniert auf jeden Fall auf Raspberry OS).
 1. `sudo -i` -- Anmelden als root. Achtung: Als root kann man sehr viel Unsinn anstellen, erst denken, dann tippen!
 2. `apt update && apt upgrade -y` -- Aktualisieren der Paketquellen und installieren von Updates
-3. `apt install python3 python3-pip mosquito mosquito-client influxdb influxdb-client grafana -y` -- Installieren aller notwendiger Pakete, falls diese nicht schon vorhanden sind
+3. `apt install python3 python3-pip mosquitto influxdb influxdb-client apt-transport-https software-properties-common wget -y` -- Installieren aller notwendiger Pakete, falls diese nicht schon vorhanden sind
 4. `nano /etc/influxdb/influxdb.conf` -- Öffnen der InfluxDB-Konfigurationsdatei
 5. Scrolle mit den Pfeiltasten bis zum Bereich, der mit [http] beginnt und entferne das Hashtag vor "enabled=true". Verlasse den Texteditor mit "Strg+X", speichere die Änderungen dabei mit "Y" und dann "Enter".
 6. `systemctl enable influxdb && systemctl start influxdb` -- Starten von InfluxDB und hinzufügen zum Autostart
-7. `influxdb` -- Öffnen der InfluxDB-Konsole
+7. `influx` -- Öffnen der InfluxDB-Konsole
 8. `CREATE DATABASE iot`-- Erstellen einer InfluxDB-Datenbank mit den Namen "iot"
 9. `CREATE USER grafana WITH PASSWORD '>Dein Passwort<'` -- Erstellen eines InfluxDB-Nutzers mit den Namen "grafana". Setze für >Dein Password< ein sicheres Passwort ein!
 10. `GRANT ALL ON iot TO grafana` -- Zuweisen der Rechte auf die Datenbank zu den Nutzer
 11. `exit` -- Verlassen der InfluxDB-Konsole
 12. `pip3 install paho-mqtt influxdb` -- Installiere einige Python-Bibliotheken für das Bridge-Script
 13. `cd` -- Sicherstellen, dass wird uns im /root Ordner befinden
-14. `wget https://github.com/JulianFP/CO2-Sensor/blob/main/MQTTInfluxDBBridge.py` -- Herunterladen des Bridge-Scripts.
-15. Öffne das Bridge-Script mit `nano MQTTInfluxDBBridge.py` und ersetze >Dein Password< mit deinem vorher definierten Passwort. Alles andere habe ich bereits vorkonfiguriert. Natürlich kann diese bei Bedarf mithilfe von nano noch verändert werden, z.B. wenn man mehrere Messstationen mit einen Server nutzen möchte.
+14. `wget https://raw.githubusercontent.com/JulianFP/CO2-Sensor/main/MQTTInfluxDBBridge.py` -- Herunterladen des Bridge-Scripts.
+15. Öffne das Bridge-Script mit `nano MQTTInfluxDBBridge.py` und ersetze >Dein Password< mit deinem vorher definierten Passwort. Alles andere habe ich bereits vorkonfiguriert. Natürlich kann diese bei Bedarf mithilfe von nano noch verändert werden, z.B. wenn man mehrere Messstationen mit einen Server nutzen möchte. Verlasse anschließend den Texteditor mit "Strg+X", speichere die Änderungen dabei mit "Y" und dann "Enter".
 16. Teste das Script mit `python3 MQTTInfluxDBBridge.py`. Falls keine Fehlermeldung erscheint, funktioniert es. Beende das Script mit "Strg+C" nun wieder.
 17. `nano /etc/systemd/system/bridge.service` -- Erstellen und öffnen einer .service Datei, um das Bridge-Script ständig im Hintegrund ausführen zu können
 18. Kopiere und füge mithilfe von "Strg+Shift+V" folgendes in die Datei ein. Verlasse anschließend den Texteditor mit "Strg+X", speichere die Änderungen dabei mit "Y" und dann "Enter".
@@ -82,10 +82,20 @@ User=root
 WantedBy=multi-user.target
 ```
 19. `systemctl enable bridge.service && systemctl start bridge.service` -- Starten des Services und hinzufügen zum Autostart
-20. `systemctl enable grafana && systemctl start grafana` -- Starten von InfluxDB und hinzufügen zum Autostart
-21. Der Grafanaserver kann nun im Browser unter >ip-adresse_des_servers<:3000 aufgerufen werden. Füge als "Data Source" InfluxDB mit den Datenbanknamen "iot" und dem Nutzer "grafana" hinzu.
-22. _Optional:_ Wenn man ohne Login auf die Daten auf den Grafanaserver zugreifen soll, dann öffne mit `nano /etc/grafana/grafana.ini` die Konfigdatei von Grafana und entferne das ";" vor "enabled=true" unter "Anonymous Auth" (du kannst mithilfe von "Strg+W suchen"). Definiere außerdem "org_name = Main Org." und "org_role = Viewer". Hiernach muss grafana mit `systemctl restart grafana` neugestartet werden
-23. _Optional:_ Definiere in derselben Konfigdate unter "Server" "protocol" zu "https", "http_port" zu "443" und "cert_key" und "cert_file" zu den Speicherort des SSL-Zertifikats. Bei der Verwendung eines Reverse-Proxy muss nur "http_port" zu "80" und "root_url" zur verwendeten URL geändert werden. Hiernach muss grafana mit `systemctl restart grafana` neugestartet werden
+20. `wget -q -O - https://packages.grafana.com/gpg.key | apt-key add -` -- Hinzufügen des Public-Keys des Grafana-Repositorys
+21. `echo "deb https://packages.grafana.com/oss/deb stable main" | tee -a /etc/apt/sources.list.d/grafana.list` -- Hinzufügen des Grafana-Repositorys
+22. `apt update && apt install grafana` -- Installation von Grafana
+23. `systemctl enable grafana-server && systemctl start grafana-server` -- Starten von InfluxDB und hinzufügen zum Autostart
+24. Der Grafanaserver kann nun im Browser unter >ip-adresse_des_servers<:3000 aufgerufen werden. Der Standard-Login ist "admin" für sowohl Nutzername als auch Passwort. Nachdem du das Passwort geändert hast, gehe links in der Leiste auf "Configuration" (das Zahnrad) und klicke unter den Reiter "Data Sources" auf "Add data source". Wähle hier "InfluxDB", gebe folgende Informationen ein (ersetze >Dein Passwort< wieder durch dein Passwort) und drücke auf "Save&Test".
+```
+URL -- localhost:8086
+Database -- iot
+User -- grafana
+Password -- >Dein Passwort<
+```
+25. Um nun die Daten zu visualisieren, kannst du links ein neues Dashboard erstellen und hier ein neues Panel erstellen. Bei "FROM" kansnt du die entsprechende Datenreihe auswählen. Diese wird allerdings erst angezeigt, wenn die Messstation bereits Daten zum Server gesendet hat.
+26. _Optional:_ Wenn man ohne Login auf die Daten auf den Grafanaserver zugreifen soll, dann öffne mit `nano /etc/grafana/grafana.ini` die Konfigdatei von Grafana und entferne das ";" vor "enabled=true" unter "Anonymous Auth" (du kannst mithilfe von "Strg+W suchen"). Definiere außerdem "org_name = Main Org." und "org_role = Viewer". Hiernach muss grafana mit `systemctl restart grafana-server` neugestartet werden
+27. _Optional:_ Definiere in derselben Konfigdate unter "Server" "protocol" zu "https", "http_port" zu "443" und "cert_key" und "cert_file" zu den Speicherort des SSL-Zertifikats. Bei der Verwendung eines Reverse-Proxy muss nur "http_port" zu "80" und "root_url" zur verwendeten URL geändert werden. Hiernach muss grafana mit `systemctl restart grafana-server` neugestartet werden
 
 ## Referenz
 Einige ähnliche Projekte haben mir sehr geholfen und mich inspiriert. Von Voltlog habe ich Code (hauptsächlich für die MQTT-Verbindung) und von Sasul habe ich das Gehäuse übernommen. Der dritte Link führt zu einer Anleitung zur Einrichtung des Servers, von dem ich auch das Python-Script habe. Dieses unterliegt somit natürlich nicht meiner AGPL-Lizenz!
