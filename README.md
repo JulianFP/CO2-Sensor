@@ -1,8 +1,8 @@
-# table of content | Inhaltsverzeichnis
+# Inhaltsverzeichnis | table of content
 
 <!-- TOC depthFrom:1 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
 
-- [table of content | Inhaltsverzeichnis](#table-of-content-inhaltsverzeichnis)
+- [Inhaltsverzeichnis | table of content](#inhaltsverzeichnis-table-of-content)
 - [Deutsch](#deutsch)
 	- [Kurzbeschreibung](#kurzbeschreibung)
 	- [Aufbau und Funktionsweise](#aufbau-und-funktionsweise)
