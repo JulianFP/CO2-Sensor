@@ -1,4 +1,4 @@
-# table of content | Inhaltsverzeichnis
+# Inhaltsverzeichnis | table of content
 
 <!-- TOC depthFrom:1 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
 
