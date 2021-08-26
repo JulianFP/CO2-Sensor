@@ -16,8 +16,8 @@ Er ist veröffentlicht unter der AGPL-3.0 Lizenz.
 #define DATA_DELAY 5000    // Pause zwischen Messpunkten in Millisekunden, Standard: 5 Sekunden pro Messpunkt - Für den MH-Z19B Sensor ist dies der Minimalwert!
 #define RECONNECT_DELAY 15 // Pause zwischen Versuchen, sich erneut mit dem WLAN-Netzwerk und/oder dem MQTT-Server zu verbinden, falls die Verbindung unterbrochen wurde (führt zu einem Einfrieren des Displays und erhöhten Netzwerkverkehr, deswegen sollte dieser Wert nicht zu niedrig gesetzt werden. Mögliche Lösung: Nutzung beider Kerne des ESP32: https://randomnerdtutorials.com/esp32-dual-core-arduino-ide/)
 #define alarm1 1000        // Grenze für ersten Alarm (gelbe Schrift)
-#define alarm2 1500        // Grenze für ersten Alarm (orangene Schrift)
-#define alarm3 2000        // Grenze für ersten Alarm (rote Schrift)
+#define alarm2 1500        // Grenze für zweiten Alarm (orangene Schrift)
+#define alarm3 2000        // Grenze für dritten Alarm (rote Schrift)
 #define RectMax 2500       // maximale CO2-Konzentration, die innerhalb des Balkens angezeigt wird
 #define warmup true        // MH-Z19B muss 3 min. aufwärmen, hier angegeben in Mikrosekunden (siehe Datasheet https://www.winsen-sensor.com/d/files/infrared-gas-sensor/mh-z19b-co2-ver1_0.pdf). Achtung: Nur für Entwicklungszwecke auf false stellen!!!
 #define LED 4              // GPIO-Pin der Status-LED
@@ -37,12 +37,12 @@ const char* password = "WLAN-Passwort";
 const int timeout = 30; //in Sekunden
 
 // MQTT Server Konfiguration
-#define MQTT_SERVER "192.168.1.50"              // z.B. lokale IP-Addresse des Raspberrys auf den der MQTT- und Grafanaserver läuft
+#define MQTT_SERVER "192.168.1.50"              // z.B. lokale IP-Addresse des Raspberrys auf den der MQTT- und Grafanaserver läuft (kann mit den Befehl 'ip addr' bestimmt werden)
 #define MQTT_PORT 1883                          // Standard MQTT-Port: 1883
 #define MQTT_USER ""                            // Standard: leer
 #define MQTT_PASSWORD ""                        // Standard: leer
 #define MQTT_CLIENT_ID "co2Node"                // Standard: co2Nod
-#define MQTT_DEVICE_TOPIC "iot/chemie/"         // Standard:iot/chemie
+#define MQTT_DEVICE_TOPIC "iot/chemie/"         // Standard: iot/chemie
 #define MQTT_TOPIC_STATE "iot/chemie/status"    // Standard: iot/chemie/status
 WiFiClient co2Node;                           // MQTT Client initialisieren
 PubSubClient mqttClient(co2Node);             // MQTT Client initialisieren
@@ -139,7 +139,7 @@ void setup() {
   delay(5000);
   display.clearScreen();
   
-  //GPIO 2 als LED-Pin definieren
+  //Status LED als LED-Pin definieren
   pinMode(LED,OUTPUT);
   
   //MH-Z19 UART Verbindung einrichten
